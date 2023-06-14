@@ -5,7 +5,6 @@ ciencia da computacao
 .3
 #nome
 engenharia
-.4
 .5
 .6
 .7

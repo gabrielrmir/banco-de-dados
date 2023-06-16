@@ -148,7 +148,7 @@ int menu() {
 	return opcao;
 }
 
-void adicionarregistro() {
+int escolherarquivo() {
 	int opcao;
 
 	printf("1. Cursos\n");
@@ -162,6 +162,12 @@ void adicionarregistro() {
 	do {
 		input(&opcao, 'd');
 	} while (opcao < 1 || opcao > 6);
+	
+	return opcao;
+}
+
+void adicionarregistro() {
+	int opcao = escolherarquivo();
 	if (opcao == 6) return;
 
 	if (opcao == 1) {
@@ -217,8 +223,13 @@ int main() {
 			adicionarregistro();
 		} else if (opcao == 4) {
 			int id, arquivo;
+			arquivo = escolherarquivo();
+			if (arquivo == 6) continue;
+
+			printf("Digite o id: ");
 			input(&id, 'd');
-			deletarid(id);	
+
+			deletarid(id, arquivos[arquivo-1]);
 		}else if (opcao == 5) break;
 	}
 

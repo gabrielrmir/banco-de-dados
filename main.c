@@ -55,6 +55,8 @@ typedef struct {
 	char *email;
 } Professor;
 
+char *arquivos[5] = {"cursos.txt", "disciplinas.txt", "turmas.txt", "alunos.txt", "professores.txt"};
+
 void input(void *target, char t) {
 	int c, i;
 	size_t l, size = 256;
@@ -144,9 +146,23 @@ int hasreg(int id, char *arquivo) {
 	return linha;
 }
 
-void modreg(void *data, int tipo) { // alterar/adicionar registro a um arquivo
+// alterar/adicionar registro a um arquivo
+void modreg(void *data, int tipo) { 
+	FILE *ptr;
 	if (tipo == 0) { // cursos.txt
-
+		Curso *curso = (Curso *) data;
+		deletarid(curso->id, arquivos[tipo]);
+		ptr = fopen(arquivos[tipo], "a");
+		fprintf(ptr, ".%d\n", curso->id);
+		fprintf(ptr, "#nome\n%s\n", curso->nome);
+		fprintf(ptr, "#disciplinas\n");
+		Node *node = curso->disciplinas;
+		while (node != NULL) {
+			// printf("erro\n");
+			fprintf(ptr, "%d\n", node->id);
+			node = node->next;
+		}
+		fclose(ptr);
 	}
 }
 
@@ -194,9 +210,18 @@ void adicionarregistro() {
 		printf("Id: ");
 		do { 
 			input(&(curso.id), 'd');
+			if (hasreg(curso.id, arquivos[opcao-1])) {
+				printf("Erro: id ja existe!\n");
+				curso.id = -1;
+				continue;
+			}
 		} while (curso.id < 0 || curso.id > 999);
 		printf("Nome do curso: ");
 		input(&(curso.nome), 's');
+		curso.disciplinas = NULL;
+		// printf("erro\n");
+		modreg(&curso, opcao-1);
+
 	} else if (opcao == 2) {
 		Disciplina disciplina;
 		printf("Id: ");
@@ -210,13 +235,13 @@ void adicionarregistro() {
 			input(&(disciplina.carga), 'd');
 		} while (disciplina.carga <= 0);
 
-		printf("Id: %d\n", disciplina.id);
-		printf("Nome: %s\n", disciplina.nome);
-		printf("Carga: %d\n", disciplina.carga);
+		// printf("Id: %d\n", disciplina.id);
+		// printf("Nome: %s\n", disciplina.nome);
+		// printf("Carga: %d\n", disciplina.carga);
 	}
 }
 
-char *arquivos[5] = {"cursos.txt", "disciplinas.txt", "turmas.txt", "alunos.txt", "professores.txt"};
+// char *arquivos[5] = {"cursos.txt", "disciplinas.txt", "turmas.txt", "alunos.txt", "professores.txt"};
 int main() {
 	// teste
 	// int id, l;

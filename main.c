@@ -82,7 +82,7 @@ void input(void *target, char t) {
 				if (*endptr != '\0' || n < 0) continue;
 				memcpy(target, &n, sizeof(int));
 			} else if (t == 's') {
-				buffer[strcspn(buffer, "\n")] = 0;
+				// buffer[strcspn(buffer, "\n")] = 0;
 				char **str = (char **) target;
 				*str = (char *) malloc(strlen(buffer)+1);
 				strcpy(*str, buffer);
@@ -94,26 +94,6 @@ void input(void *target, char t) {
 		}
 	}
 }
-
-// void inputstr(char **str) {
-// 	size_t len;
-// 	int c;
-// 	char buffer[256];
-// 	while (1) {
-// 		fgets(buffer, 256, stdin);
-// 		len = strlen(buffer);
-// 		if (len == 1) continue;
-// 		if (strchr(buffer, '\n') != NULL) {
-// 			buffer[strcspn(buffer, "\n")] = 0;
-// 			*str = (char *) malloc(len+2);
-// 			strcpy(*str, buffer);
-// 			break;
-// 		} else {
-// 			while ((c = getchar()) != '\n' && c != EOF);
-// 			continue;
-// 		}
-// 	}
-// }
 
 // Ex: .000, .001, .002, ..., .999
 // Retorna a primeira linha a ser deletada
@@ -138,7 +118,10 @@ int deletarid(int id, char *arquivo) {
 	fclose(ptr1);
 	fclose(ptr2);
 
-	if (!sucesso) printf("Erro: Id nao encontrado!\n");
+	remove(arquivo);
+	rename("temp.txt", arquivo);
+
+	// if (!sucesso) printf("Erro: Id nao encontrado!\n");
 	return linha;
 }
 
@@ -211,12 +194,12 @@ void adicionarregistro() {
 char *arquivos[5] = {"cursos.txt", "disciplinas.txt", "turmas.txt", "alunos.txt", "professores.txt"};
 int main() {
 	// teste
-	int id, l;
-	printf("(teste) deletar id\nescolha um id que esteja presente em cursos.txt\nresultado direcionado para o arquivo temp.txt\nid: ");
-	input(&id, 'd');
-	l = deletarid(id, arquivos[0]);
-	printf("linha deletada: %d\n", l);
-	return 0;
+	// int id, l;
+	// printf("(teste) deletar id\nescolha um id que esteja presente em cursos.txt\nresultado direcionado para o arquivo temp.txt\nid: ");
+	// input(&id, 'd');
+	// l = deletarid(id, arquivos[0]);
+	// printf("linha deletada: %d\n", l);
+	// return 0;
 	//fim do teste
 	
 	int opcao, i;
@@ -232,7 +215,11 @@ int main() {
 		if (opcao == 1) {
 		} else if (opcao == 2) {
 			adicionarregistro();
-		} else if (opcao == 5) break;
+		} else if (opcao == 4) {
+			int id, arquivo;
+			input(&id, 'd');
+			deletarid(id);	
+		}else if (opcao == 5) break;
 	}
 
 	return 0;

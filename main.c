@@ -57,13 +57,13 @@ typedef struct {
 
 char *arquivos[5] = {"cursos.txt", "disciplinas.txt", "turmas.txt", "alunos.txt", "professores.txt"};
 
-void input(void *target, char t) {
+void input(void *target, char t, FILE *src) {
 	int c, i;
 	size_t l, size = 256;
 	char buffer[256];
 
 	while (1) {
-		fgets(buffer, size, stdin);
+		fgets(buffer, size, src);
 
 		l = strlen(buffer);
 		if (l == 1) continue;
@@ -146,6 +146,19 @@ int hasreg(int id, char *arquivo) {
 	return linha;
 }
 
+void *getreg(int id, int tipo) {
+	FILE *ptr;
+	if (hasreg(id, arquivos[tipo])) {
+		ptr = fopen(arquivos[tipo], "r");
+		if (tipo == 0) { // cursos.txt
+			
+		}
+		fclose(ptr);
+	} else {
+		return NULL;
+	}
+}
+
 // alterar/adicionar registro a um arquivo
 void modreg(void *data, int tipo) { 
 	FILE *ptr;
@@ -158,7 +171,6 @@ void modreg(void *data, int tipo) {
 		fprintf(ptr, "#disciplinas\n");
 		Node *node = curso->disciplinas;
 		while (node != NULL) {
-			// printf("erro\n");
 			fprintf(ptr, "%d\n", node->id);
 			node = node->next;
 		}
@@ -177,7 +189,7 @@ int menu() {
 	printf("Escolha uma operacao: ");
 
 	do {
-		input(&opcao, 'd');
+		input(&opcao, 'd', stdin);
 	} while(opcao < 1 || opcao > 5);
 
 	return opcao;
@@ -195,7 +207,7 @@ int escolherarquivo() {
 	printf("Escolha um arquivo: ");
 
 	do {
-		input(&opcao, 'd');
+		input(&opcao, 'd', stdin);
 	} while (opcao < 1 || opcao > 6);
 	
 	return opcao;
@@ -209,7 +221,7 @@ void adicionarregistro() {
 		Curso curso;
 		printf("Id: ");
 		do { 
-			input(&(curso.id), 'd');
+			input(&(curso.id), 'd', stdin);
 			if (hasreg(curso.id, arquivos[opcao-1])) {
 				printf("Erro: id ja existe!\n");
 				curso.id = -1;
@@ -217,41 +229,28 @@ void adicionarregistro() {
 			}
 		} while (curso.id < 0 || curso.id > 999);
 		printf("Nome do curso: ");
-		input(&(curso.nome), 's');
+		input(&(curso.nome), 's', stdin);
 		curso.disciplinas = NULL;
-		// printf("erro\n");
+
 		modreg(&curso, opcao-1);
 
 	} else if (opcao == 2) {
 		Disciplina disciplina;
 		printf("Id: ");
 		do {
-			input(&(disciplina.id), 'd');
+			input(&(disciplina.id), 'd', stdin);
 		} while (disciplina.id < 0 || disciplina.id > 999);
 		printf("Nome da disciplina: ");
-		input(&(disciplina.nome), 's');
+		input(&(disciplina.nome), 's', stdin);
 		printf("Carga horaria: ");
 		do {
-			input(&(disciplina.carga), 'd');
+			input(&(disciplina.carga), 'd', stdin);
 		} while (disciplina.carga <= 0);
-
-		// printf("Id: %d\n", disciplina.id);
-		// printf("Nome: %s\n", disciplina.nome);
-		// printf("Carga: %d\n", disciplina.carga);
 	}
 }
 
 // char *arquivos[5] = {"cursos.txt", "disciplinas.txt", "turmas.txt", "alunos.txt", "professores.txt"};
 int main() {
-	// teste
-	// int id, l;
-	// printf("(teste) deletar id\nescolha um id que esteja presente em cursos.txt\nresultado direcionado para o arquivo temp.txt\nid: ");
-	// input(&id, 'd');
-	// l = deletarid(id, arquivos[0]);
-	// printf("linha deletada: %d\n", l);
-	// return 0;
-	//fim do teste
-	
 	int opcao, i;
 	FILE *ptr;
 	for (i = 0; i < 5; i++) {
@@ -269,10 +268,9 @@ int main() {
 			int id, arquivo;
 			arquivo = escolherarquivo();
 			if (arquivo == 6) continue;
-
 			printf("Digite o id: ");
 			while (1) {
-				input(&id, 'd');
+				input(&id, 'd', stdin);
 				if (hasreg(id, arquivos[arquivo-1])) {
 					break;
 				} else {

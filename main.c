@@ -125,6 +125,25 @@ int deletarid(int id, char *arquivo) {
 	return linha;
 }
 
+int hasreg(int id, char *arquivo) {
+	int id_arquivo, linha = 0, i = 1;
+	char buffer[256];
+	FILE *ptr = fopen(arquivo, "r");
+	while (fgets(buffer, 256, ptr)) {
+		if (buffer[0] == '.') {
+			id_arquivo = atoi(&buffer[1]);
+			if (id == id_arquivo) {
+				linha = i;
+				break;
+			}
+		}
+		i++;
+	}
+	fclose(ptr);
+
+	return linha;
+}
+
 void modreg(void *data, int tipo) { // alterar/adicionar registro a um arquivo
 	if (tipo == 0) { // cursos.txt
 
@@ -227,10 +246,17 @@ int main() {
 			if (arquivo == 6) continue;
 
 			printf("Digite o id: ");
-			input(&id, 'd');
+			while (1) {
+				input(&id, 'd');
+				if (hasreg(id, arquivos[arquivo-1])) {
+					break;
+				} else {
+					printf("Erro: Registro nao encontrado!\n");
+				}
+			}
 
 			deletarid(id, arquivos[arquivo-1]);
-		}else if (opcao == 5) break;
+		} else if (opcao == 5) break;
 	}
 
 	return 0;

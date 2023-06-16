@@ -148,12 +148,35 @@ int hasreg(int id, char *arquivo) {
 
 void *getreg(int id, int tipo) {
 	FILE *ptr;
+	void *reg;
+	char buffer[256];
+
 	if (hasreg(id, arquivos[tipo])) {
 		ptr = fopen(arquivos[tipo], "r");
 		if (tipo == 0) { // cursos.txt
-			
+			Curso curso;
+			curso.id = id;
+			while (fgets(buffer, 256, ptr)) {
+				if (buffer[0] != '.') continue;
+				if(atoi(&buffer[1]) == curso.id) break;
+			}
+			while (fgets(buffer, 256, ptr)) {
+				if (buffer[0] == ';') break;
+				if (buffer[0] == '#') {
+					buffer[strcspn(buffer, "\n")] = 0;
+					printf("%s\n", &buffer[1]);
+					if (strcmp(&buffer[1], "nome") == 0) {
+						// input(&buffer, 's', ptr);
+						fgets(buffer, 256, ptr);
+						printf("%s\n", buffer);
+					}
+				}
+			}
+			reg = &curso;
 		}
 		fclose(ptr);
+
+		return reg;
 	} else {
 		return NULL;
 	}
@@ -174,6 +197,7 @@ void modreg(void *data, int tipo) {
 			fprintf(ptr, "%d\n", node->id);
 			node = node->next;
 		}
+		fprintf(ptr, ";\n");
 		fclose(ptr);
 	}
 }
@@ -251,6 +275,9 @@ void adicionarregistro() {
 
 // char *arquivos[5] = {"cursos.txt", "disciplinas.txt", "turmas.txt", "alunos.txt", "professores.txt"};
 int main() {
+	getreg(777, 0);
+	return 0;
+
 	int opcao, i;
 	FILE *ptr;
 	for (i = 0; i < 5; i++) {

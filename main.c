@@ -154,28 +154,41 @@ void *getreg(int id, int tipo) {
 	if (hasreg(id, arquivos[tipo])) {
 		ptr = fopen(arquivos[tipo], "r");
 		if (tipo == 0) { // cursos.txt
-			Curso curso;
-			curso.id = id;
+			Curso *curso = malloc(sizeof(Curso));
+			curso->id = id;
+
 			while (fgets(buffer, 256, ptr)) {
 				if (buffer[0] != '.') continue;
-				if(atoi(&buffer[1]) == curso.id) break;
+				if(atoi(&buffer[1]) == curso->id) break;
 			}
+			
 			while (fgets(buffer, 256, ptr)) {
 				if (buffer[0] == ';') break;
 				if (buffer[0] == '#') {
 					buffer[strcspn(buffer, "\n")] = 0;
-					printf("%s\n", &buffer[1]);
 					if (strcmp(&buffer[1], "nome") == 0) {
-						// input(&buffer, 's', ptr);
 						fgets(buffer, 256, ptr);
-						printf("%s\n", buffer);
+						if (strchr(buffer, '\n')) buffer[strcspn(buffer,"\n")] = 0;
+						curso->nome = malloc(strlen(buffer)+1);
+						strcpy(curso->nome, buffer);
+					} else if (strcmp(&buffer[1], "disciplinas") == 0) {
+						Node *first = malloc(sizeof(Node));
+						Node **head = &first;
+						while (fgets(buffer, 256, ptr)) {
+							if (buffer[0] == ';') break;
+							(**head).id = atoi(buffer);
+							(**head).next = malloc(sizeof(Node));
+							head = &((**head).next);
+						}
+						*head = NULL;
+						curso->disciplinas = first;
 					}
 				}
 			}
-			reg = &curso;
+
+			reg = curso;
 		}
 		fclose(ptr);
-
 		return reg;
 	} else {
 		return NULL;
@@ -183,7 +196,7 @@ void *getreg(int id, int tipo) {
 }
 
 // alterar/adicionar registro a um arquivo
-void modreg(void *data, int tipo) { 
+void modreg(void *data, int tipo) {
 	FILE *ptr;
 	if (tipo == 0) { // cursos.txt
 		Curso *curso = (Curso *) data;
@@ -197,7 +210,7 @@ void modreg(void *data, int tipo) {
 			fprintf(ptr, "%d\n", node->id);
 			node = node->next;
 		}
-		fprintf(ptr, ";\n");
+		fprintf(ptr, ";\n;\n");
 		fclose(ptr);
 	}
 }
@@ -234,19 +247,81 @@ int escolherarquivo() {
 		input(&opcao, 'd', stdin);
 	} while (opcao < 1 || opcao > 6);
 	
-	return opcao;
+	return opcao-1;
+}
+
+void alterarregistro() {
+	char buffer[256];
+	void *reg;
+	int arquivo = escolherarquivo(), campo, id;
+	if (arquivo == 5) return;
+	
+	// TODO: imprimir lista de registros do arquivo escolhido
+	printf("Digite o registro que deseja alterar: ");
+	do {
+		input(&id, 'd', stdin);
+	} while(!hasreg(id, arquivos[arquivo]));
+
+	if (arquivo == 0) {
+		printf("1. Id\n");
+		printf("2. Nome\n");
+		printf("3. Disciplinas\n");
+		printf("4. Voltar\n");
+		printf("Escolha o campo que deseja alterar: ");
+		do {
+			input(&campo, 'd', stdin);
+		} while(campo < 1 || campo > 4);
+		if (campo == 4) return;
+		Curso *curso = (Curso *) getreg(id, arquivo);
+		if (campo == 1) { // id
+			int valor;
+			printf("Digite o novo valor: ");
+			do {
+				input(&valor, 'd', stdin);
+			} while (hasreg(valor, arquivos[arquivo]) || valor > 999);
+			curso->id = valor;
+		} else if (campo == 2) { // nome
+			printf("Digite o novo valor: ");
+			char *nome;
+			input(&nome, 's', stdin);
+			printf("%s\n", nome);
+			curso->nome = malloc(strlen(nome)+1);
+			strcpy(curso->nome, nome);
+		} else if (campo == 3) { // disciplinas
+			int valor;
+			// TODO: imprimir lista de disciplinas
+			printf("Digite o id da disciplina que deseja adicionar: ");
+
+			// TODO: verificar se disciplina existe
+			do {
+				input(&valor, 'd', stdin);
+			} while (valor > 999); // hasreg(valor, arquivos[1])	
+
+			Node **head = &(curso->disciplinas);
+			while (*head) {
+				head = &((*head)->next);
+			}
+			*head = malloc(sizeof(Node));
+			(*head)->id = valor;
+			(*head)->next = NULL;
+		}
+		reg = curso;
+	}
+
+	deletarid(id, arquivos[arquivo]);
+	modreg(reg, arquivo);
 }
 
 void adicionarregistro() {
 	int opcao = escolherarquivo();
-	if (opcao == 6) return;
+	if (opcao == 5) return;
 
-	if (opcao == 1) {
+	if (opcao == 0) {
 		Curso curso;
 		printf("Id: ");
 		do { 
 			input(&(curso.id), 'd', stdin);
-			if (hasreg(curso.id, arquivos[opcao-1])) {
+			if (hasreg(curso.id, arquivos[opcao])) {
 				printf("Erro: id ja existe!\n");
 				curso.id = -1;
 				continue;
@@ -256,9 +331,9 @@ void adicionarregistro() {
 		input(&(curso.nome), 's', stdin);
 		curso.disciplinas = NULL;
 
-		modreg(&curso, opcao-1);
+		modreg(&curso, opcao);
 
-	} else if (opcao == 2) {
+	} else if (opcao == 1) {
 		Disciplina disciplina;
 		printf("Id: ");
 		do {
@@ -273,11 +348,7 @@ void adicionarregistro() {
 	}
 }
 
-// char *arquivos[5] = {"cursos.txt", "disciplinas.txt", "turmas.txt", "alunos.txt", "professores.txt"};
 int main() {
-	getreg(777, 0);
-	return 0;
-
 	int opcao, i;
 	FILE *ptr;
 	for (i = 0; i < 5; i++) {
@@ -289,23 +360,26 @@ int main() {
 		opcao = menu();
 		
 		if (opcao == 1) {
+			// imprimir arquivo
 		} else if (opcao == 2) {
 			adicionarregistro();
+		} else if (opcao == 3) {
+			alterarregistro();
 		} else if (opcao == 4) {
 			int id, arquivo;
 			arquivo = escolherarquivo();
-			if (arquivo == 6) continue;
+			if (arquivo == 5) continue;
 			printf("Digite o id: ");
 			while (1) {
 				input(&id, 'd', stdin);
-				if (hasreg(id, arquivos[arquivo-1])) {
+				if (hasreg(id, arquivos[arquivo])) {
 					break;
 				} else {
 					printf("Erro: Registro nao encontrado!\n");
 				}
 			}
 
-			deletarid(id, arquivos[arquivo-1]);
+			deletarid(id, arquivos[arquivo]);
 		} else if (opcao == 5) break;
 	}
 

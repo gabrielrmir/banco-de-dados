@@ -44,8 +44,15 @@ computer
 #disciplinas
 442
 45
-665
 ;
 #turno
 m
+;
+.551
+#nome
+direito
+#disciplinas
+;
+#turno
+n
 ;

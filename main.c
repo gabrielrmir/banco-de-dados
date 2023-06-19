@@ -242,15 +242,16 @@ int menu() {
 	int opcao;
 
 	printf("1. Imprimir arquivo\n");
-	printf("2. Adicionar registro\n");
-	printf("3. Alterar registro\n");
-	printf("4. Excluir registro\n");
-	printf("5. Sair\n");
+	printf("2. Imprimir registro\n");
+	printf("3. Adicionar registro\n");
+	printf("4. Alterar registro\n");
+	printf("5. Excluir registro\n");
+	printf("6. Sair\n");
 	printf("Escolha uma operacao: ");
 
 	do {
 		input(&opcao, 'd', stdin);
-	} while(opcao < 1 || opcao > 5);
+	} while(opcao < 1 || opcao > 6);
 
 	return opcao;
 }
@@ -273,21 +274,33 @@ int escolherarquivo() {
 	return opcao-1;
 }
 
-void inputid(int *dest, int arquivo) {
+void inputid(const char *str, int *dest, int arquivo) {
 	int valor;
-	printf("Digite o novo id: ");
+	printf("%s", str);
 	do {
 		input(&valor, 'd', stdin);
 	} while (hasreg(valor, arquivos[arquivo]) || valor > 999);
 	*dest = valor;
 }
 
-void inputnome(char **dest) {
-	printf("Digite o novo nome: ");
+void inputnome(const char *str, char **dest) {
+	printf("%s", str);
 	char *nome;
 	input(&nome, 's', stdin);
 	*dest = malloc(strlen(nome)+1);
 	strcpy(*dest, nome);
+}
+
+void inputturno(const char *str, char *dest) {
+	char c;
+	printf("m: Matutino\n");
+	printf("v: Vespertino\n");
+	printf("n: Noturno\n");
+	printf("%s", str);
+	do {
+		input(&c, 'c', stdin);
+	} while (c != 'm' && c != 'v' && c != 'n');
+	*dest = c;
 }
 
 int nodehasid(Node *node, int id) {
@@ -335,13 +348,30 @@ void delnode(Node **node) {
 	}
 }
 
+void printfilterid(Node *node, char *arquivo) {
+	char buffer[256];
+	int id;
+	FILE *ptr = fopen(arquivo, "r");
+	printf("|-id--|-nome----\n");
+	while (fgets(buffer, 256, ptr)) {
+		if (buffer[0] != '.') continue;
+		id = atoi(&buffer[1]);
+		if (!nodehasid(node, id)) continue;
+		while (fgets(buffer, 256, ptr)) {
+			if (strcmp(buffer, "#nome\n") != 0) continue;
+			fgets(buffer, 256, ptr);
+			printf("| %-4d| %s", id, buffer);
+			break;
+		}
+	}
+}
+
 void alterarregistro() {
 	char buffer[256];
 	void *reg;
 	int arquivo = escolherarquivo(), opcao, id;
 	if (arquivo == 5) return;
 	
-	// TODO: imprimir lista de registros do arquivo escolhido
 	printarquivo(arquivos[arquivo]);
 	printf("Digite o registro que deseja alterar: ");
 	do {
@@ -364,23 +394,19 @@ void alterarregistro() {
 		if (opcao == 6) return;
 
 		if (opcao == 1) { // id
-			inputid(&(curso->id), arquivo);
+			inputid("Digite o novo id: ", &(curso->id), arquivo);
 		} else if (opcao == 2) { // nome
-			inputnome(&(curso->nome));
+			inputnome("Digite o novo nome: ", &(curso->nome));
 		} else if (opcao == 3) { // add disciplina
-			// TODO: imprimir lista de disciplinas
+			printarquivo(arquivos[1]);
 			printf("Digite o id da disciplina que deseja adicionar: ");
 			addnode(&(curso->disciplinas), arquivos[1]);
 		} else if (opcao == 4) { // del disciplina
-			// TODO: imprimir lista de disciplinas
+			printfilterid(curso->disciplinas, arquivos[1]);
 			printf("Digite o id da disciplina que deseja remover: ");
 			delnode(&(curso->disciplinas));
 		} else if (opcao == 5) { // turno
-			printf("m: Matutino\nv: Vespertino\nn: Noturno\n");
-			printf("Digite o turno: ");
-			char *c = &(curso->turno);
-			do { input(c, 'c', stdin);
-			} while (*c != 'm' && *c != 'v' && *c != 'n');
+			inputturno("Digite o turno: ", &(curso->turno));
 		}
 		reg = curso;
 	}
@@ -392,44 +418,45 @@ void alterarregistro() {
 void adicionarregistro() {
 	int opcao = escolherarquivo();
 	if (opcao == 5) return;
-
-	if (opcao == 0) {
+	void *reg;
+	if (opcao == 0) { // curso
 		Curso curso;
-		printf("Id: ");
-		do { 
-			input(&(curso.id), 'd', stdin);
-			if (hasreg(curso.id, arquivos[opcao])) {
-				printf("Erro: id ja existe!\n");
-				curso.id = -1;
-				continue;
-			}
-		} while (curso.id < 0 || curso.id > 999);
-		printf("Nome do curso: ");
-		input(&(curso.nome), 's', stdin);
+		inputid("Id: ", &(curso.id), opcao);
+		inputnome("Nome do curso: ", &(curso.nome));
 		curso.disciplinas = NULL;
-		printf("m: Matutino\n");
-		printf("v: Vespertino\n");
-		printf("n: Noturno\n");
-		printf("Turno: ");
-		char c;
-		do {
-			input(&c, 'c', stdin);
-		} while (c != 'm' && c != 'v' && c != 'n');
-		curso.turno = c;
-		modreg(&curso, opcao);
-	} else if (opcao == 1) {
+		inputturno("Turno: ", &(curso.turno));
+		reg = &curso;
+	} else if (opcao == 1) { // disciplina
 		Disciplina disciplina;
-		printf("Id: ");
-		do {
-			input(&(disciplina.id), 'd', stdin);
-		} while (disciplina.id < 0 || disciplina.id > 999);
-		printf("Nome da disciplina: ");
-		input(&(disciplina.nome), 's', stdin);
+		inputid("Id: ", &(disciplina.id), opcao);
+		inputnome("Nome da disciplina: ", &(disciplina.nome));
+		disciplina.turmas = NULL;
 		printf("Carga horaria: ");
-		do {
-			input(&(disciplina.carga), 'd', stdin);
+		do { input(&(disciplina.carga), 'd', stdin);
 		} while (disciplina.carga <= 0);
+		disciplina.notas = NULL;
+		reg = &disciplina;
+	} else if (opcao == 2) { // turma
+		Turma turma;
+		inputid("Id: ", &(turma.id), opcao);
+		turma.alunos = NULL;
+		printarquivo(arquivos[4]);
+		printf("Professor: ");
+		do { input(&(turma.professor), 'd', stdin);
+		} while (!hasreg(turma.professor, arquivos[4]));
+		// TODO: adicionar horario da turma
+		reg = &turma;
+	} else if (opcao == 3) { // aluno
+		Aluno aluno;
+		// TODO: implementar adicionar aluno
+		reg = &aluno;
+	} else if (opcao == 4) { // professor
+		Professor professor;
+		// TODO: implementar adicionar professor
+		reg = &professor;
 	}
+	// TODO: implementar modreg/getreg para todos os arquivos
+	modreg(reg, opcao);
 }
 
 int main() {
@@ -444,27 +471,32 @@ int main() {
 		opcao = menu();
 		
 		if (opcao == 1) {
-			// imprimir arquivo
+			int arquivo = escolherarquivo();
+			printarquivo(arquivos[arquivo]);
 		} else if (opcao == 2) {
-			adicionarregistro();
+			int arquivo = escolherarquivo(), id;
+			printarquivo(arquivos[arquivo]);
+			printf("Escolha um registro para ler mais detalhes: ");
+			do { input(&id, 'd', stdin);
+			} while (!hasreg(id, arquivos[arquivo]));
+			// TODO: implementar printregistro
+			printf("funcao ainda nao implementada\n");
 		} else if (opcao == 3) {
-			alterarregistro();
+			adicionarregistro();
 		} else if (opcao == 4) {
-			int id, arquivo;
-			arquivo = escolherarquivo();
+			alterarregistro();
+		} else if (opcao == 5) {
+			int arquivo = escolherarquivo(), id;
 			if (arquivo == 5) continue;
-			printf("Digite o id: ");
+			printarquivo(arquivos[arquivo]);
 			while (1) {
+				printf("Digite o id: ");
 				input(&id, 'd', stdin);
-				if (hasreg(id, arquivos[arquivo])) {
-					break;
-				} else {
-					printf("Erro: Registro nao encontrado!\n");
-				}
+				if (hasreg(id, arquivos[arquivo])) break;
+				else printf("Erro: Registro nao encontrado!\n");
 			}
-
 			deletarid(id, arquivos[arquivo]);
-		} else if (opcao == 5) break;
+		} else if (opcao == 6) break;
 	}
 
 	return 0;

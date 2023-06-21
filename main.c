@@ -167,10 +167,6 @@ void *getreg(int id, int tipo) {
 				if (buffer[0] == '#') {
 					buffer[strcspn(buffer, "\n")] = 0;
 					if (strcmp(&buffer[1], "nome") == 0) {
-						// fgets(buffer, 256, ptr);
-						// if (strchr(buffer, '\n')) buffer[strcspn(buffer,"\n")] = 0;
-						// curso->nome = malloc(strlen(buffer)+1);
-						// strcpy(curso->nome, buffer);
 						input(&(curso->nome), 's', ptr);
 					} else if (strcmp(&buffer[1], "disciplinas") == 0) {
 						Node *first = malloc(sizeof(Node));
@@ -212,6 +208,7 @@ void printarquivo(char *arquivo) {
 			printf("%s", buffer);
 		}
 	}
+	fclose(ptr);
 }
 
 // alterar/adicionar registro a um arquivo
@@ -271,14 +268,18 @@ int escolherarquivo() {
 	return opcao-1;
 }
 
-// void inputid(const char *str, int *dest, int arquivo) {
-// 	int valor;
-// 	printf("%s", str);
-// 	do {
-// 		input(&valor, 'd', stdin);
-// 	} while (hasreg(valor, arquivos[arquivo]) || valor > 999);
-// 	*dest = valor;
-// }
+// Converte uma string para um id valido,
+// modifica o valor de destino e retorna 1.
+// Caso não seja possível, mantém o valor
+// de destino inalterado e retorna 0.
+int strtoid(const char *str, int *dest) {
+	char *endptr;
+	int valor = strtol(str, &endptr, 10);
+	if (*endptr) return 0;
+	if (valor < 0 || valor > 999) return 0;
+	*dest = valor;
+	return 1;
+}
 
 int newid(char *arquivo) {
 	int id;
@@ -318,12 +319,7 @@ int nodehasid(Node *node, int id) {
 	return 0;
 }
 
-void addnode(Node **node, char *arquivo) {
-	int id;
-	do {
-		input(&id, 'd', stdin);
-	} while (id > 999 || !hasreg(id, arquivo) || nodehasid(*node, id));
-
+void addnode(Node **node, int id) {
 	while (*node) {
 		node = &((*node)->next);
 	}
@@ -332,11 +328,19 @@ void addnode(Node **node, char *arquivo) {
 	(*node)->next = NULL;
 }
 
+void inputnode(Node **node, char *arquivo) {
+	int id;
+	do {
+		input(&id, 'd', stdin);
+	} while (id > 999 || !hasreg(id, arquivo) || nodehasid(*node, id));
+	addnode(node, id);
+}
+
 void delnode(Node **node) {
 	int id;
 	do {
 		input(&id, 'd', stdin);
-	} while (id > 999 || !nodehasid(*node, id));
+	} while (!nodehasid(*node, id));
 	
 	Node *prev = NULL;
 	while (*node) {
@@ -386,7 +390,6 @@ void alterarregistro() {
 	if (arquivo == 0) {
 		Curso *curso = (Curso *) getreg(id, arquivo);
 
-		// printf("1. Alterar id\n");
 		printf("1. Alterar nome\n");
 		printf("2. Adicionar disciplina\n");
 		printf("3. Remover disciplina\n");
@@ -398,15 +401,12 @@ void alterarregistro() {
 		} while(opcao < 1 || opcao > 5);
 		if (opcao == 5) return;
 
-		/*if (opcao == 1) { // id
-			inputid("Digite o novo id: ", &(curso->id), arquivo);
-		} else */
 		if (opcao == 1) { // nome
 			inputnome("Digite o novo nome: ", &(curso->nome));
 		} else if (opcao == 2) { // add disciplina
 			printarquivo(arquivos[1]);
 			printf("Digite o id da disciplina que deseja adicionar: ");
-			addnode(&(curso->disciplinas), arquivos[1]);
+			inputnode(&(curso->disciplinas), arquivos[1]);
 		} else if (opcao == 3) { // del disciplina
 			printfilterid(curso->disciplinas, arquivos[1]);
 			printf("Digite o id da disciplina que deseja remover: ");
@@ -416,26 +416,53 @@ void alterarregistro() {
 		}
 		reg = curso;
 	}
-	// deletarid(id, arquivos[arquivo]);
+	
 	modreg(reg, arquivo);
 }
 
-void adicionarregistro() {
-	int opcao = escolherarquivo();
-	if (opcao == 5) return;
+void adicionarregistro(int opcao) {
 	void *reg;
 	int id = newid(arquivos[opcao]);
 	if (opcao == 0) { // curso
 		Curso curso;
 		curso.id = id;
-		// inputid("Id: ", &(curso.id), opcao);
 		inputnome("Nome do curso: ", &(curso.nome));
+		
+		// TODO: mover para uma função própria loopaddnode
 		curso.disciplinas = NULL;
+		printarquivo(arquivos[1]);
+		printf("- Escolha as disciplinas que deseja adicionar ao curso ou uma das opcoes abaixo:\n");
+		printf("- 'n' ... Criar uma nova disciplina\n");
+		printf("- 'r' ... Remover disciplina do curso\n");
+		printf("- 'q' ... Finalizar essa etapa\n");
+		char *str;
+		int discid;
+		do {
+			printf(": ");
+			input(&str, 's', stdin);
+			if (strtoid(str, &discid)) {
+				if (!hasreg(discid, arquivos[1])) { free(str); continue; }
+				if (nodehasid(curso.disciplinas, discid)) { free(str); continue;}
+				addnode(&(curso.disciplinas), discid);
+				printfilterid(curso.disciplinas, arquivos[1]);
+			} else if (strlen(str) == 1) {
+				if (str[0] == 'q') { free(str); break; }
+				else if (str[0] == 'n') {
+					adicionarregistro(1);
+					printarquivo(arquivos[1]);
+				} else if (str[0] == 'r') {
+					printfilterid(curso.disciplinas, arquivos[1]);
+					delnode(&(curso.disciplinas));
+				}
+			}
+			free(str);
+		} while (1);
+		//
+		
 		inputturno("Turno: ", &(curso.turno));
 		reg = &curso;
 	} else if (opcao == 1) { // disciplina
 		Disciplina disciplina;
-		// inputid("Id: ", &(disciplina.id), opcao);
 		disciplina.id = id;
 		inputnome("Nome da disciplina: ", &(disciplina.nome));
 		disciplina.turmas = NULL;
@@ -446,7 +473,6 @@ void adicionarregistro() {
 		reg = &disciplina;
 	} else if (opcao == 2) { // turma
 		Turma turma;
-		// inputid("Id: ", &(turma.id), opcao);
 		turma.id = id;
 		turma.alunos = NULL;
 		printarquivo(arquivos[4]);
@@ -496,7 +522,9 @@ int main() {
 			// TODO: implementar printregistro
 			printf("funcao ainda nao implementada\n");
 		} else if (opcao == 3) {
-			adicionarregistro();
+			int arquivo = escolherarquivo();
+			if (arquivo == 5) continue;
+			adicionarregistro(arquivo);
 		} else if (opcao == 4) {
 			alterarregistro();
 		} else if (opcao == 5) {

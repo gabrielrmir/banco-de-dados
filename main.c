@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 typedef struct Nota {
 	int id;
@@ -85,7 +86,6 @@ void input(void *target, char t, FILE *src) {
 				if (*endptr != '\0' || n < 0) continue;
 				memcpy(target, &n, sizeof(int));
 			} else if (t == 's') {
-				// buffer[strcspn(buffer, "\n")] = 0;
 				char **str = (char **) target;
 				*str = (char *) malloc(strlen(buffer)+1);
 				strcpy(*str, buffer);
@@ -123,8 +123,7 @@ int deletarid(int id, char *arquivo) {
 
 	remove(arquivo);
 	rename("temp.txt", arquivo);
-
-	// if (!sucesso) printf("Erro: Id nao encontrado!\n");
+	
 	return linha;
 }
 
@@ -168,13 +167,11 @@ void *getreg(int id, int tipo) {
 				if (buffer[0] == '#') {
 					buffer[strcspn(buffer, "\n")] = 0;
 					if (strcmp(&buffer[1], "nome") == 0) {
-						fgets(buffer, 256, ptr);
-						if (strchr(buffer, '\n')) buffer[strcspn(buffer,"\n")] = 0;
-						curso->nome = malloc(strlen(buffer)+1);
-						strcpy(curso->nome, buffer);
-						// char *nome;
-						// input(&nome, 's', ptr);
-						// curso->nome = nome;
+						// fgets(buffer, 256, ptr);
+						// if (strchr(buffer, '\n')) buffer[strcspn(buffer,"\n")] = 0;
+						// curso->nome = malloc(strlen(buffer)+1);
+						// strcpy(curso->nome, buffer);
+						input(&(curso->nome), 's', ptr);
 					} else if (strcmp(&buffer[1], "disciplinas") == 0) {
 						Node *first = malloc(sizeof(Node));
 						Node **head = &first;
@@ -274,13 +271,21 @@ int escolherarquivo() {
 	return opcao-1;
 }
 
-void inputid(const char *str, int *dest, int arquivo) {
-	int valor;
-	printf("%s", str);
+// void inputid(const char *str, int *dest, int arquivo) {
+// 	int valor;
+// 	printf("%s", str);
+// 	do {
+// 		input(&valor, 'd', stdin);
+// 	} while (hasreg(valor, arquivos[arquivo]) || valor > 999);
+// 	*dest = valor;
+// }
+
+int newid(char *arquivo) {
+	int id;
 	do {
-		input(&valor, 'd', stdin);
-	} while (hasreg(valor, arquivos[arquivo]) || valor > 999);
-	*dest = valor;
+		id = (int)(rand()*1000.0/RAND_MAX);
+	} while (hasreg(id, arquivo) || id > 999 || id < 0);
+	return id;
 }
 
 void inputnome(const char *str, char **dest) {
@@ -381,37 +386,37 @@ void alterarregistro() {
 	if (arquivo == 0) {
 		Curso *curso = (Curso *) getreg(id, arquivo);
 
-		printf("1. Alterar id\n");
-		printf("2. Alterar nome\n");
-		printf("3. Adicionar disciplina\n");
-		printf("4. Remover disciplina\n");
-		printf("5. Alterar turno\n");
-		printf("6. Voltar\n");
+		// printf("1. Alterar id\n");
+		printf("1. Alterar nome\n");
+		printf("2. Adicionar disciplina\n");
+		printf("3. Remover disciplina\n");
+		printf("4. Alterar turno\n");
+		printf("5. Voltar\n");
 		printf("Escolha uma opcao: ");
 		do {
 			input(&opcao, 'd', stdin);
-		} while(opcao < 1 || opcao > 6);
-		if (opcao == 6) return;
+		} while(opcao < 1 || opcao > 5);
+		if (opcao == 5) return;
 
-		if (opcao == 1) { // id
+		/*if (opcao == 1) { // id
 			inputid("Digite o novo id: ", &(curso->id), arquivo);
-		} else if (opcao == 2) { // nome
+		} else */
+		if (opcao == 1) { // nome
 			inputnome("Digite o novo nome: ", &(curso->nome));
-		} else if (opcao == 3) { // add disciplina
+		} else if (opcao == 2) { // add disciplina
 			printarquivo(arquivos[1]);
 			printf("Digite o id da disciplina que deseja adicionar: ");
 			addnode(&(curso->disciplinas), arquivos[1]);
-		} else if (opcao == 4) { // del disciplina
+		} else if (opcao == 3) { // del disciplina
 			printfilterid(curso->disciplinas, arquivos[1]);
 			printf("Digite o id da disciplina que deseja remover: ");
 			delnode(&(curso->disciplinas));
-		} else if (opcao == 5) { // turno
+		} else if (opcao == 4) { // turno
 			inputturno("Digite o turno: ", &(curso->turno));
 		}
 		reg = curso;
 	}
-
-	deletarid(id, arquivos[arquivo]);
+	// deletarid(id, arquivos[arquivo]);
 	modreg(reg, arquivo);
 }
 
@@ -419,16 +424,19 @@ void adicionarregistro() {
 	int opcao = escolherarquivo();
 	if (opcao == 5) return;
 	void *reg;
+	int id = newid(arquivos[opcao]);
 	if (opcao == 0) { // curso
 		Curso curso;
-		inputid("Id: ", &(curso.id), opcao);
+		curso.id = id;
+		// inputid("Id: ", &(curso.id), opcao);
 		inputnome("Nome do curso: ", &(curso.nome));
 		curso.disciplinas = NULL;
 		inputturno("Turno: ", &(curso.turno));
 		reg = &curso;
 	} else if (opcao == 1) { // disciplina
 		Disciplina disciplina;
-		inputid("Id: ", &(disciplina.id), opcao);
+		// inputid("Id: ", &(disciplina.id), opcao);
+		disciplina.id = id;
 		inputnome("Nome da disciplina: ", &(disciplina.nome));
 		disciplina.turmas = NULL;
 		printf("Carga horaria: ");
@@ -438,7 +446,8 @@ void adicionarregistro() {
 		reg = &disciplina;
 	} else if (opcao == 2) { // turma
 		Turma turma;
-		inputid("Id: ", &(turma.id), opcao);
+		// inputid("Id: ", &(turma.id), opcao);
+		turma.id = id;
 		turma.alunos = NULL;
 		printarquivo(arquivos[4]);
 		printf("Professor: ");
@@ -448,10 +457,12 @@ void adicionarregistro() {
 		reg = &turma;
 	} else if (opcao == 3) { // aluno
 		Aluno aluno;
+		aluno.id = id;
 		// TODO: implementar adicionar aluno
 		reg = &aluno;
 	} else if (opcao == 4) { // professor
 		Professor professor;
+		professor.id = id;
 		// TODO: implementar adicionar professor
 		reg = &professor;
 	}
@@ -466,6 +477,9 @@ int main() {
 		ptr = fopen(arquivos[i], "a");
 		fclose(ptr);
 	}
+
+	srand(time(NULL));
+	rand();
 
 	while (1) {
 		opcao = menu();

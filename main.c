@@ -3,16 +3,23 @@
 #include <string.h>
 #include <time.h>
 
-typedef struct Nota {
+typedef struct {
 	int id;
 	float nota1;
 	float nota2;
 	float nota3;
-	struct Nota *next;
 } Nota;
 
+typedef struct {
+	int semana;
+	int hi; // hora inicio
+	int mi; // minuto inicio
+	int hf; // hora fim
+	int mf; // minuto fim
+} Horario;
+
 typedef struct Node {
-	int id;
+	void *data;
 	struct Node *next;
 } Node;
 
@@ -28,7 +35,7 @@ typedef struct {
 	int carga;
 	char *nome;
 	Node *turmas;
-	Nota *notas;
+	Node *notas;
 } Disciplina;
 
 typedef struct {
@@ -36,7 +43,7 @@ typedef struct {
 	int professor;
 	char turno;
 	Node *alunos;
-	// horario
+	Node *horarios;
 } Turma;
 
 typedef struct {
@@ -60,9 +67,9 @@ typedef struct {
 char *arquivos[5] = {"cursos.txt", "disciplinas.txt", "turmas.txt", "alunos.txt", "professores.txt"};
 
 void input(void *target, char t, FILE *src) {
-	int c, i;
+	int c;
 	size_t l, size = 256;
-	char buffer[256];
+	char buffer[256], *endptr;
 
 	while (1) {
 		fgets(buffer, size, src);
@@ -76,12 +83,10 @@ void input(void *target, char t, FILE *src) {
 				if (l != 2) continue;
 				memcpy(target, &buffer[0], sizeof(char));
 			} else if (t == 'f') {
-				char *endptr;
 				float f = strtof(buffer, &endptr);
 				if (*endptr != '\0' || f < 0) continue;
 				memcpy(target, &f, sizeof(float));
 			} else if (t == 'd') {
-				char *endptr;
 				int n = strtol(buffer, &endptr, 10);
 				if (*endptr != '\0' || n < 0) continue;
 				memcpy(target, &n, sizeof(int));
@@ -128,71 +133,101 @@ int deletarid(int id, char *arquivo) {
 }
 
 int hasreg(int id, char *arquivo) {
-	int id_arquivo, linha = 0, i = 1;
+	int id_arquivo, linha = 0, i = 0;
 	char buffer[256];
 	FILE *ptr = fopen(arquivo, "r");
 	while (fgets(buffer, 256, ptr)) {
-		if (buffer[0] == '.') {
-			id_arquivo = atoi(&buffer[1]);
-			if (id == id_arquivo) {
-				linha = i;
-				break;
-			}
-		}
 		i++;
+		if (buffer[0] != '.') continue;
+		if (atoi(&buffer[1]) != id) continue;
+		linha = i; break;
 	}
 	fclose(ptr);
-
 	return linha;
 }
 
 void *getreg(int id, int tipo) {
-	FILE *ptr;
-	void *reg;
 	char buffer[256];
+	void *reg = NULL;
+	FILE *ptr;
 
-	if (hasreg(id, arquivos[tipo])) {
-		ptr = fopen(arquivos[tipo], "r");
-		if (tipo == 0) { // cursos.txt
-			Curso *curso = malloc(sizeof(Curso));
-			curso->id = id;
-
-			while (fgets(buffer, 256, ptr)) {
-				if (buffer[0] != '.') continue;
-				if(atoi(&buffer[1]) == curso->id) break;
-			}
-			
-			while (fgets(buffer, 256, ptr)) {
-				if (buffer[0] == ';') break;
-				if (buffer[0] == '#') {
-					buffer[strcspn(buffer, "\n")] = 0;
-					if (strcmp(&buffer[1], "nome") == 0) {
-						input(&(curso->nome), 's', ptr);
-					} else if (strcmp(&buffer[1], "disciplinas") == 0) {
-						Node *first = malloc(sizeof(Node));
-						Node **head = &first;
-						while (fgets(buffer, 256, ptr)) {
-							if (buffer[0] == ';') break;
-							(**head).id = atoi(buffer);
-							(**head).next = malloc(sizeof(Node));
-							head = &((**head).next);
-						}
-						*head = NULL;
-						curso->disciplinas = first;
-					} else if (strcmp(&buffer[1], "turno") == 0) {
-						fgets(buffer, 256, ptr);
-						curso->turno = buffer[0];
-					}
-				}
-			}
-
-			reg = curso;
-		}
-		fclose(ptr);
-		return reg;
-	} else {
-		return NULL;
+	if (!hasreg(id, arquivos[tipo])) return NULL;
+	ptr = fopen(arquivos[tipo], "r");
+	while (fgets(buffer, 256, ptr)) {
+		if (buffer[0] != '.') continue;
+		if(atoi(&buffer[1]) == id) break;
 	}
+
+	if (tipo == 0) { // cursos.txt
+		Curso *curso = (Curso *)malloc(sizeof(Curso));
+		curso->id = id; // id
+		input(&(curso->nome), 's', ptr); // nome
+		curso->disciplinas = NULL;
+		while (fgets(buffer, 256, ptr)) { // disciplinas
+			if (buffer[0] == ';') break;
+			int *discid = (int *)malloc(sizeof(int));
+			*discid = atoi(buffer);
+			addnode(&(curso->disciplinas), discid);
+		}
+		input(&(curso->turno), 'c', ptr); // turno
+		reg = curso;
+	} else if (tipo == 1) { // disciplinas.txt
+		Disciplina *disciplina = (Disciplina *)malloc(sizeof(Disciplina));
+		disciplina->id = id; // id
+		input(&(disciplina->nome), 's', ptr); // nome
+		disciplina->turmas = NULL;
+		while (fgets(buffer, 256, ptr)) { // turmas
+			if (buffer[0] == ';') break;
+			int *turmaid = (int *)malloc(sizeof(int));
+			*turmaid = atoi(buffer);
+			addnode(&(disciplina->turmas), turmaid);
+		}
+		input(&(disciplina->carga), 'd', ptr); // carga horária
+		disciplina->notas = NULL;
+		while (fgets(buffer, 256, ptr)) { // notas
+			if (buffer[0] == ';') break;
+			Nota *nota = (Nota *)malloc(sizeof(Nota));
+			sscanf("%d%f%f%f", &(nota->id), &(nota->nota1), &(nota->nota2), &(nota->nota3));
+			addnode(&(disciplina->notas), nota);
+		}
+		reg = disciplina;
+	} else if (tipo == 2) { // turmas.txt
+		Turma *turma = (Turma *)malloc(sizeof(Turma));
+		turma->id = id; // id
+		while (fgets(buffer, 256, ptr)) { // alunos
+			if (buffer[0] == ';') break;
+			int *alunoid = (int *)malloc(sizeof(int));
+			*alunoid = atoi(buffer);
+			addnode(&(turma->alunos), alunoid);
+		}
+		input(&(turma->professor), 'd', ptr); // professor
+		while (fgets(buffer, 256, ptr)) { // horários
+			if (buffer[0] == ';') break;
+			Horario *h = (Horario *)malloc(sizeof(Horario));
+			sscanf(ptr, "%d%d%d%d%d", &(h->semana), &(h->hi), &(h->mi), &(h->hf), &(h->mf));
+			addnode(&(turma->horarios), h);
+		}
+		reg = turma;
+	} else if (tipo == 3) { // alunos.txt
+		Aluno *aluno = (Aluno *)malloc(sizeof(Aluno));
+		aluno->id = id; // id
+		input(&(aluno->nome), 's', ptr); // nome
+		input(&(aluno->cpf), 'd', ptr); // cpf
+		input(&(aluno->telefone), 'd', ptr); // telefone
+		input(&(aluno->email), 's', ptr); // email
+		sscanf(ptr, '%d%d', &(aluno->ing_ano), &(aluno->ing_semestre)); // ano, semestre
+		reg = aluno;
+	} else if (tipo == 4) { // professores.txt
+		Professor *professor = (Professor *)malloc(sizeof(Professor));
+		professor->id = id; // id
+		input(&(professor->nome), 's', ptr); // nome
+		input(&(professor->cpf), 'd', ptr); // cpf
+		input(&(professor->telefone), 'd', ptr); // telefone
+		input(&(professor->email), 's', ptr); // email
+		reg = professor;
+	}
+	fclose(ptr);
+	return reg;
 }
 
 void printarquivo(char *arquivo) {
@@ -223,7 +258,7 @@ void modreg(void *data, int tipo) {
 		fprintf(ptr, "#disciplinas\n");
 		Node *node = curso->disciplinas;
 		while (node != NULL) {
-			fprintf(ptr, "%d\n", node->id);
+			fprintf(ptr, "%d\n", node->data);
 			node = node->next;
 		}
 		fprintf(ptr, ";\n#turno\n");
@@ -311,7 +346,7 @@ void inputturno(const char *str, char *dest) {
 
 int nodehasid(Node *node, int id) {
 	while (node) {
-		if (node->id == id) {
+		if (node->data == id) {
 			return 1;
 		}
 		node = node->next;
@@ -319,12 +354,12 @@ int nodehasid(Node *node, int id) {
 	return 0;
 }
 
-void addnode(Node **node, int id) {
+void addnode(Node **node, void* data) {
 	while (*node) {
 		node = &((*node)->next);
 	}
 	*node = malloc(sizeof(Node));
-	(*node)->id = id;
+	(*node)->data = data;
 	(*node)->next = NULL;
 }
 
@@ -344,7 +379,7 @@ void delnode(Node **node) {
 	
 	Node *prev = NULL;
 	while (*node) {
-		if ((*node)->id == id) {
+		if ((*node)->data == id) {
 			if (prev) {
 				prev->next = (*node)->next;
 			} else {

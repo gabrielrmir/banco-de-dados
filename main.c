@@ -49,18 +49,18 @@ typedef struct {
 typedef struct {
 	int id;
 	char *nome;
-	char *email;
-	int cpf;
+	char *cpf;
 	int telefone;
-	int ing_semestre;
+	char *email;
 	int ing_ano;
+	int ing_semestre;
 } Aluno;
 
 typedef struct {
 	int id;
-	int cpf;
-	int telefone;
 	char *nome;
+	char *cpf;
+	int telefone;
 	char *email;
 } Professor;
 
@@ -184,7 +184,7 @@ void *getreg(int id, int tipo) {
 		}
 		input(&(disciplina->carga), 'd', ptr); // carga horária
 		disciplina->notas = NULL;
-		while (fgets(buffer, 256, ptr)) { // notas
+		while (fgets(buffer, 256, ptr)) { // notas. Ex: 123 10.0 5.5 8.9
 			if (buffer[0] == ';') break;
 			Nota *nota = (Nota *)malloc(sizeof(Nota));
 			sscanf("%d%f%f%f", &(nota->id), &(nota->nota1), &(nota->nota2), &(nota->nota3));
@@ -212,7 +212,7 @@ void *getreg(int id, int tipo) {
 		Aluno *aluno = (Aluno *)malloc(sizeof(Aluno));
 		aluno->id = id; // id
 		input(&(aluno->nome), 's', ptr); // nome
-		input(&(aluno->cpf), 'd', ptr); // cpf
+		input(&(aluno->cpf), 's', ptr); // cpf
 		input(&(aluno->telefone), 'd', ptr); // telefone
 		input(&(aluno->email), 's', ptr); // email
 		sscanf(ptr, '%d%d', &(aluno->ing_ano), &(aluno->ing_semestre)); // ano, semestre
@@ -221,7 +221,7 @@ void *getreg(int id, int tipo) {
 		Professor *professor = (Professor *)malloc(sizeof(Professor));
 		professor->id = id; // id
 		input(&(professor->nome), 's', ptr); // nome
-		input(&(professor->cpf), 'd', ptr); // cpf
+		input(&(professor->cpf), 's', ptr); // cpf
 		input(&(professor->telefone), 'd', ptr); // telefone
 		input(&(professor->email), 's', ptr); // email
 		reg = professor;
@@ -246,25 +246,69 @@ void printarquivo(char *arquivo) {
 	fclose(ptr);
 }
 
-// alterar/adicionar registro a um arquivo
-void modreg(void *data, int tipo) {
-	FILE *ptr;
+// adicionar registro a um arquivo
+void addreg(void *data, int tipo) {
+	FILE *ptr = fopen(arquivos[tipo], "a");
+	Node *node;
 	if (tipo == 0) { // cursos.txt
 		Curso *curso = (Curso *) data;
-		deletarid(curso->id, arquivos[tipo]);
-		ptr = fopen(arquivos[tipo], "a");
-		fprintf(ptr, ".%d\n", curso->id);
-		fprintf(ptr, "#nome\n%s\n", curso->nome);
-		fprintf(ptr, "#disciplinas\n");
-		Node *node = curso->disciplinas;
-		while (node != NULL) {
-			fprintf(ptr, "%d\n", node->data);
+		fprintf(ptr, ".%d\n", curso->id); // id
+		fprintf(ptr, "%s\n", curso->nome); // nome
+		node = curso->disciplinas;
+		while (node) { // disciplinas
+			fprintf(ptr, "%d\n", *((int *)(node->data)));
 			node = node->next;
 		}
-		fprintf(ptr, ";\n#turno\n");
-		fprintf(ptr, "%c\n;\n", curso->turno);
-		fclose(ptr);
+		fprintf(ptr, ";%c\n", curso->turno); // turno
+	} else if (tipo == 1) { // disciplinas.txt
+		Disciplina *disciplina = (Disciplina *) data;
+		fprintf(ptr, ".%d\n", disciplina->id); // id
+		fprintf(ptr, "%s\n", disciplina->nome); // nome
+		node = disciplina->turmas;
+		while (node) { // turmas
+			fprintf(ptr, "%d\n", *((int *)(node->data)));
+			node = node->next;
+		}
+		fprintf(ptr, ";%d\n", disciplina->carga); // carga horaria
+		node = disciplina->notas;
+		while (node) { // notas. Ex: 123 10.0 5.5 8.9
+			Nota *nota = (Nota *)(node->data);
+			fprintf(ptr, "%d %.2f %.2f %.2f\n", nota->id, nota->nota1, nota->nota2, nota->nota3);
+		}
+		fprintf(ptr, ";\n");
+	} else if (tipo == 2) { // turmas.txt
+		Turma *turma = (Turma *) data;
+		fprintf(ptr, ".%d\n", turma->id); // id
+		node = turma->alunos;
+		while (node) { // alunos
+			fprintf(ptr, "%d\n", *((int *)(node->data)));
+			node = node->next;
+		}
+		fprintf(ptr, ";%d\n", turma->professor); // professor
+		node = turma->horarios;
+		while (node) { // horarios. (dia da semana (0-6) + hora inicio + minuto inicio + hora fim + minuto fim )
+			Horario *h = (Horario *)(node->data);
+			fprintf(ptr, "%d %d %d %d %d\n", h->semana, h->hi, h->mi, h->hf, h->mf);
+			node = node->next;
+		}
+		fprintf(ptr, ";\n");
+	} else if (tipo == 3) { // alunos.txt
+		Aluno *aluno = (Aluno *) data;
+		fprintf(ptr, ".%d\n", aluno->id); // id
+		fprintf(ptr, "%s\n", aluno->nome); // nome
+		fprintf(ptr, "%s\n", aluno->cpf); // cpf
+		fprintf(ptr, "%d\n", aluno->telefone); // telefone
+		fprintf(ptr, "%s\n", aluno->email); // email
+		fprintf(ptr, "%d %d\n", aluno->ing_ano, aluno->ing_semestre); // ingresso. (ano + semestre (1 ou 2))
+	} else if (tipo == 4) { // professores.txt
+		Professor *professsor = (Professor *) data;
+		fprintf(ptr, ".%d\n", professsor->id); // id
+		fprintf(ptr, "%s\n", professsor->nome); // nome
+		fprintf(ptr, "%s\n", professsor->cpf); // cpf
+		fprintf(ptr, "%d\n", professsor->telefone); // telefone
+		fprintf(ptr, "%s\n", professsor->email); // email
 	}
+	fclose(ptr);
 }
 
 int menu() {
@@ -452,6 +496,7 @@ void alterarregistro() {
 		reg = curso;
 	}
 	
+	deletarid(id, arquivos[arquivo]);
 	modreg(reg, arquivo);
 }
 

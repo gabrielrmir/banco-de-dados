@@ -41,7 +41,6 @@ typedef struct {
 typedef struct {
 	int id;
 	int professor;
-	char turno;
 	Node *alunos;
 	Node *horarios;
 } Turma;
@@ -50,7 +49,7 @@ typedef struct {
 	int id;
 	char *nome;
 	char *cpf;
-	int telefone;
+	char *telefone;
 	char *email;
 	int ing_ano;
 	int ing_semestre;
@@ -60,7 +59,7 @@ typedef struct {
 	int id;
 	char *nome;
 	char *cpf;
-	int telefone;
+	char *telefone;
 	char *email;
 } Professor;
 
@@ -103,10 +102,35 @@ void input(void *target, char t, FILE *src) {
 	}
 }
 
+void addnode(Node **node, void* data) {
+	while (*node) {
+		node = &((*node)->next);
+	}
+	*node = malloc(sizeof(Node));
+	(*node)->data = data;
+	(*node)->next = NULL;
+}
+
+void delnode(Node **node, void *data, size_t size) {
+	Node *prev = NULL;
+	while (*node) {
+		if (memcmp((*node)->data, data, size) == 0) {
+			if (prev) {
+				prev->next = (*node)->next;
+			} else {
+				*node = (*node)->next;
+			}
+			break;
+		}
+		prev = *node;
+		node = &((*node)->next);
+	}
+}
+
 // Ex: .000, .001, .002, ..., .999
 // Retorna a primeira linha a ser deletada
 // Caso a linha nao foi encontrada, retorna 0
-int deletarid(int id, char *arquivo) {
+int delreg(int id, char *arquivo) {
 	int id_atual = -1, sucesso = 0, linha = 0, i = 1;
 	char buffer[256];
 	FILE *ptr1 = fopen(arquivo, "r");
@@ -187,7 +211,7 @@ void *getreg(int id, int tipo) {
 		while (fgets(buffer, 256, ptr)) { // notas. Ex: 123 10.0 5.5 8.9
 			if (buffer[0] == ';') break;
 			Nota *nota = (Nota *)malloc(sizeof(Nota));
-			sscanf("%d%f%f%f", &(nota->id), &(nota->nota1), &(nota->nota2), &(nota->nota3));
+			sscanf(buffer, "%d%f%f%f", &(nota->id), &(nota->nota1), &(nota->nota2), &(nota->nota3));
 			addnode(&(disciplina->notas), nota);
 		}
 		reg = disciplina;
@@ -204,7 +228,7 @@ void *getreg(int id, int tipo) {
 		while (fgets(buffer, 256, ptr)) { // horários
 			if (buffer[0] == ';') break;
 			Horario *h = (Horario *)malloc(sizeof(Horario));
-			sscanf(ptr, "%d%d%d%d%d", &(h->semana), &(h->hi), &(h->mi), &(h->hf), &(h->mf));
+			sscanf(buffer, "%d%d%d%d%d", &(h->semana), &(h->hi), &(h->mi), &(h->hf), &(h->mf));
 			addnode(&(turma->horarios), h);
 		}
 		reg = turma;
@@ -213,16 +237,16 @@ void *getreg(int id, int tipo) {
 		aluno->id = id; // id
 		input(&(aluno->nome), 's', ptr); // nome
 		input(&(aluno->cpf), 's', ptr); // cpf
-		input(&(aluno->telefone), 'd', ptr); // telefone
+		input(&(aluno->telefone), 's', ptr); // telefone
 		input(&(aluno->email), 's', ptr); // email
-		sscanf(ptr, '%d%d', &(aluno->ing_ano), &(aluno->ing_semestre)); // ano, semestre
+		sscanf(buffer, "%d%d", &(aluno->ing_ano), &(aluno->ing_semestre)); // ano, semestre
 		reg = aluno;
 	} else if (tipo == 4) { // professores.txt
 		Professor *professor = (Professor *)malloc(sizeof(Professor));
 		professor->id = id; // id
 		input(&(professor->nome), 's', ptr); // nome
 		input(&(professor->cpf), 's', ptr); // cpf
-		input(&(professor->telefone), 'd', ptr); // telefone
+		input(&(professor->telefone), 's', ptr); // telefone
 		input(&(professor->email), 's', ptr); // email
 		reg = professor;
 	}
@@ -235,10 +259,9 @@ void printarquivo(char *arquivo) {
 	char buffer[256];
 	printf("|-id--|-nome----\n");
 	while (fgets(buffer, 256, ptr)) {
-		if (strchr(buffer, '\n')) buffer[strcspn(buffer, "\n")] = 0;
 		if (buffer[0] == '.') {
+			buffer[strcspn(buffer, "\n")] = 0;
 			printf("| %-4s| ", &buffer[1]);
-		} else if (strcmp(buffer, "#nome") == 0) {
 			fgets(buffer, 256, ptr);
 			printf("%s", buffer);
 		}
@@ -259,7 +282,7 @@ void addreg(void *data, int tipo) {
 			fprintf(ptr, "%d\n", *((int *)(node->data)));
 			node = node->next;
 		}
-		fprintf(ptr, ";%c\n", curso->turno); // turno
+		fprintf(ptr, ";\n%c\n", curso->turno); // turno
 	} else if (tipo == 1) { // disciplinas.txt
 		Disciplina *disciplina = (Disciplina *) data;
 		fprintf(ptr, ".%d\n", disciplina->id); // id
@@ -269,7 +292,7 @@ void addreg(void *data, int tipo) {
 			fprintf(ptr, "%d\n", *((int *)(node->data)));
 			node = node->next;
 		}
-		fprintf(ptr, ";%d\n", disciplina->carga); // carga horaria
+		fprintf(ptr, ";\n%d\n", disciplina->carga); // carga horaria
 		node = disciplina->notas;
 		while (node) { // notas. Ex: 123 10.0 5.5 8.9
 			Nota *nota = (Nota *)(node->data);
@@ -284,7 +307,7 @@ void addreg(void *data, int tipo) {
 			fprintf(ptr, "%d\n", *((int *)(node->data)));
 			node = node->next;
 		}
-		fprintf(ptr, ";%d\n", turma->professor); // professor
+		fprintf(ptr, ";\n%d\n", turma->professor); // professor
 		node = turma->horarios;
 		while (node) { // horarios. (dia da semana (0-6) + hora inicio + minuto inicio + hora fim + minuto fim )
 			Horario *h = (Horario *)(node->data);
@@ -297,7 +320,7 @@ void addreg(void *data, int tipo) {
 		fprintf(ptr, ".%d\n", aluno->id); // id
 		fprintf(ptr, "%s\n", aluno->nome); // nome
 		fprintf(ptr, "%s\n", aluno->cpf); // cpf
-		fprintf(ptr, "%d\n", aluno->telefone); // telefone
+		fprintf(ptr, "%s\n", aluno->telefone); // telefone
 		fprintf(ptr, "%s\n", aluno->email); // email
 		fprintf(ptr, "%d %d\n", aluno->ing_ano, aluno->ing_semestre); // ingresso. (ano + semestre (1 ou 2))
 	} else if (tipo == 4) { // professores.txt
@@ -305,7 +328,7 @@ void addreg(void *data, int tipo) {
 		fprintf(ptr, ".%d\n", professsor->id); // id
 		fprintf(ptr, "%s\n", professsor->nome); // nome
 		fprintf(ptr, "%s\n", professsor->cpf); // cpf
-		fprintf(ptr, "%d\n", professsor->telefone); // telefone
+		fprintf(ptr, "%s\n", professsor->telefone); // telefone
 		fprintf(ptr, "%s\n", professsor->email); // email
 	}
 	fclose(ptr);
@@ -368,12 +391,24 @@ int newid(char *arquivo) {
 	return id;
 }
 
-void inputnome(const char *str, char **dest) {
+// int inputid() {
+// 	int id;
+// 	do { input(&id, 'd', stdin);
+// 	} while (id > 999);
+// 	return id;
+// }
+
+void inputlen(const char *str, char **dest, size_t length) {
 	printf("%s", str);
 	char *nome;
-	input(&nome, 's', stdin);
-	*dest = malloc(strlen(nome)+1);
-	strcpy(*dest, nome);
+	while (1) {
+		input(&nome, 's', stdin);
+		if (strlen(nome) == length || length == 0) break;
+		free(nome);
+	}
+	*dest = nome;
+	// *dest = malloc(strlen(nome)+1);
+	// strcpy(*dest, nome);
 }
 
 void inputturno(const char *str, char *dest) {
@@ -388,9 +423,9 @@ void inputturno(const char *str, char *dest) {
 	*dest = c;
 }
 
-int nodehasid(Node *node, int id) {
+int nodehasdata(Node *node, void *data, size_t size) {
 	while (node) {
-		if (node->data == id) {
+		if (memcmp(node->data, data, size) == 0) {
 			return 1;
 		}
 		node = node->next;
@@ -398,44 +433,17 @@ int nodehasid(Node *node, int id) {
 	return 0;
 }
 
-void addnode(Node **node, void* data) {
-	while (*node) {
-		node = &((*node)->next);
-	}
-	*node = malloc(sizeof(Node));
-	(*node)->data = data;
-	(*node)->next = NULL;
-}
+// void inputnode(Node **node, char *arquivo) {
+// 	int id;
+// 	do {
+// 		input(&id, 'd', stdin);
+// 	} while (id > 999 || !hasreg(id, arquivo) || nodehasdata(*node, &id, sizeof(int)));
+// 	addnode(node, id);
+// }
 
-void inputnode(Node **node, char *arquivo) {
-	int id;
-	do {
-		input(&id, 'd', stdin);
-	} while (id > 999 || !hasreg(id, arquivo) || nodehasid(*node, id));
-	addnode(node, id);
-}
 
-void delnode(Node **node) {
-	int id;
-	do {
-		input(&id, 'd', stdin);
-	} while (!nodehasid(*node, id));
-	
-	Node *prev = NULL;
-	while (*node) {
-		if ((*node)->data == id) {
-			if (prev) {
-				prev->next = (*node)->next;
-			} else {
-				*node = (*node)->next;
-			}
-			break;
-		}
-		prev = *node;
-		node = &((*node)->next);
-	}
-}
 
+// imprime id e nome dos registros que estao contidos em node
 void printfilterid(Node *node, char *arquivo) {
 	char buffer[256];
 	int id;
@@ -444,14 +452,17 @@ void printfilterid(Node *node, char *arquivo) {
 	while (fgets(buffer, 256, ptr)) {
 		if (buffer[0] != '.') continue;
 		id = atoi(&buffer[1]);
-		if (!nodehasid(node, id)) continue;
-		while (fgets(buffer, 256, ptr)) {
-			if (strcmp(buffer, "#nome\n") != 0) continue;
-			fgets(buffer, 256, ptr);
-			printf("| %-4d| %s", id, buffer);
-			break;
-		}
+		if (!nodehasdata(node, &id, sizeof(int))) continue;
+		fgets(buffer, 256, ptr);
+		printf("| %-4d| %s", id, buffer);
+		// while (fgets(buffer, 256, ptr)) {
+		// 	if (strcmp(buffer, "#nome\n") != 0) continue;
+		// 	fgets(buffer, 256, ptr);
+		// 	printf("| %-4d| %s", id, buffer);
+		// 	break;
+		// }
 	}
+	fclose(ptr);
 }
 
 void alterarregistro() {
@@ -481,23 +492,26 @@ void alterarregistro() {
 		if (opcao == 5) return;
 
 		if (opcao == 1) { // nome
-			inputnome("Digite o novo nome: ", &(curso->nome));
+			inputlen("Digite o novo nome: ", &(curso->nome), 0);
 		} else if (opcao == 2) { // add disciplina
-			printarquivo(arquivos[1]);
-			printf("Digite o id da disciplina que deseja adicionar: ");
-			inputnode(&(curso->disciplinas), arquivos[1]);
+			// printarquivo(arquivos[1]);
+			// printf("Digite o id da disciplina que deseja adicionar: ");
+			// int discid;
+			// do { input(&discid, 'd', stdin);
+			// }
+			// inputnode(&(curso->disciplinas), arquivos[1]);
 		} else if (opcao == 3) { // del disciplina
-			printfilterid(curso->disciplinas, arquivos[1]);
-			printf("Digite o id da disciplina que deseja remover: ");
-			delnode(&(curso->disciplinas));
+			// printfilterid(curso->disciplinas, arquivos[1]);
+			// printf("Digite o id da disciplina que deseja remover: ");
+			// delnodedata(&(curso->disciplinas), );
 		} else if (opcao == 4) { // turno
 			inputturno("Digite o turno: ", &(curso->turno));
 		}
 		reg = curso;
 	}
 	
-	deletarid(id, arquivos[arquivo]);
-	modreg(reg, arquivo);
+	delreg(id, arquivos[arquivo]);
+	addreg(reg, arquivo);
 }
 
 void adicionarregistro(int opcao) {
@@ -506,37 +520,40 @@ void adicionarregistro(int opcao) {
 	if (opcao == 0) { // curso
 		Curso curso;
 		curso.id = id;
-		inputnome("Nome do curso: ", &(curso.nome));
+		inputlen("Nome do curso: ", &(curso.nome), 0);
+		curso.disciplinas = NULL;
 		
 		// TODO: mover para uma função própria loopaddnode
-		curso.disciplinas = NULL;
-		printarquivo(arquivos[1]);
-		printf("- Escolha as disciplinas que deseja adicionar ao curso ou uma das opcoes abaixo:\n");
-		printf("- 'n' ... Criar uma nova disciplina\n");
-		printf("- 'r' ... Remover disciplina do curso\n");
-		printf("- 'q' ... Finalizar essa etapa\n");
-		char *str;
-		int discid;
-		do {
-			printf(": ");
-			input(&str, 's', stdin);
-			if (strtoid(str, &discid)) {
-				if (!hasreg(discid, arquivos[1])) { free(str); continue; }
-				if (nodehasid(curso.disciplinas, discid)) { free(str); continue;}
-				addnode(&(curso.disciplinas), discid);
-				printfilterid(curso.disciplinas, arquivos[1]);
-			} else if (strlen(str) == 1) {
-				if (str[0] == 'q') { free(str); break; }
-				else if (str[0] == 'n') {
-					adicionarregistro(1);
-					printarquivo(arquivos[1]);
-				} else if (str[0] == 'r') {
-					printfilterid(curso.disciplinas, arquivos[1]);
-					delnode(&(curso.disciplinas));
-				}
-			}
-			free(str);
-		} while (1);
+		// printarquivo(arquivos[1]);
+		// printf("- Escolha as disciplinas que deseja adicionar ao curso ou uma das opcoes abaixo:\n");
+		// printf("- 'n' ... Criar uma nova disciplina\n");
+		// printf("- 'r' ... Remover disciplina do curso\n");
+		// printf("- 'q' ... Finalizar essa etapa\n");
+		// char *str;
+		// int discid;
+		// do {
+		// 	printf(": ");
+		// 	input(&str, 's', stdin);
+		// 	if (strtoid(str, &discid)) {
+		// 		if (!hasreg(discid, arquivos[1])) { free(str); continue; }
+		// 		if (nodehasdata(curso.disciplinas, &discid, sizeof(int))) { free(str); continue;}
+		// 		int *nodeid = (int *)malloc(sizeof(int));
+		// 		*nodeid = discid;
+		// 		addnode(&(curso.disciplinas), nodeid);
+		// 		printfilterid(curso.disciplinas, arquivos[1]);
+		// 	} else if (strlen(str) == 1) {
+		// 		if (str[0] == 'q') { free(str); break; }
+		// 		else if (str[0] == 'n') {
+		// 			adicionarregistro(1);
+		// 			printarquivo(arquivos[1]);
+		// 		}
+		// 		// } else if (str[0] == 'r') {
+		// 		// 	printfilterid(curso.disciplinas, arquivos[1]);
+		// 		// 	delnode(&(curso.disciplinas));
+		// 		// }
+		// 	}
+		// 	free(str);
+		// } while (1);
 		//
 		
 		inputturno("Turno: ", &(curso.turno));
@@ -544,7 +561,7 @@ void adicionarregistro(int opcao) {
 	} else if (opcao == 1) { // disciplina
 		Disciplina disciplina;
 		disciplina.id = id;
-		inputnome("Nome da disciplina: ", &(disciplina.nome));
+		inputlen("Nome da disciplina: ", &(disciplina.nome), 0);
 		disciplina.turmas = NULL;
 		printf("Carga horaria: ");
 		do { input(&(disciplina.carga), 'd', stdin);
@@ -555,25 +572,37 @@ void adicionarregistro(int opcao) {
 		Turma turma;
 		turma.id = id;
 		turma.alunos = NULL;
-		printarquivo(arquivos[4]);
-		printf("Professor: ");
-		do { input(&(turma.professor), 'd', stdin);
-		} while (!hasreg(turma.professor, arquivos[4]));
-		// TODO: adicionar horario da turma
+		// printarquivo(arquivos[4]);
+		turma.professor = -1;
+		turma.horarios = NULL;
+		// printf("Professor: ");
+		// do { input(&(turma.professor), 'd', stdin);
+		// } while (!hasreg(turma.professor, arquivos[4]));
 		reg = &turma;
 	} else if (opcao == 3) { // aluno
 		Aluno aluno;
 		aluno.id = id;
-		// TODO: implementar adicionar aluno
+		inputlen("Nome do aluno: ", &(aluno.nome), 0);
+		inputlen("Cpf: ", &(aluno.cpf), 11);
+		inputlen("Telefone: ", &(aluno.telefone), 0);
+		inputlen("Email: ", &(aluno.email), 0);
+		time_t t = time(NULL);
+		struct tm tm = *localtime(&t);
+		aluno.ing_ano = tm.tm_year + 1900;
+		aluno.ing_semestre = (tm.tm_mon < 6) ? 1 : 2;
+		printf("ano: %d\nsemestre: %d\n", aluno.ing_ano, aluno.ing_semestre);
 		reg = &aluno;
 	} else if (opcao == 4) { // professor
 		Professor professor;
 		professor.id = id;
-		// TODO: implementar adicionar professor
+		inputlen("Nome do professor: ", &(professor.nome), 0);
+		inputlen("Cpf: ", &(professor.cpf), 11);
+		inputlen("Telefone: ", &(professor.telefone), 0);
+		inputlen("Email: ", &(professor.email), 0);
 		reg = &professor;
 	}
-	// TODO: implementar modreg/getreg para todos os arquivos
-	modreg(reg, opcao);
+	
+	addreg(reg, opcao);
 }
 
 int main() {
@@ -617,7 +646,7 @@ int main() {
 				if (hasreg(id, arquivos[arquivo])) break;
 				else printf("Erro: Registro nao encontrado!\n");
 			}
-			deletarid(id, arquivos[arquivo]);
+			delreg(id, arquivos[arquivo]);
 		} else if (opcao == 6) break;
 	}
 

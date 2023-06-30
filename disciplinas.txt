@@ -1,16 +1,12 @@
-.442
-#nome
-aaaaaaaa
+.419
+Calculo I
 ;
-.45
-#nome
-geografia
+120
+.436
+Calculo II
 ;
-.665
-#nome
-ccccccc
+80
+.607
+Calculo III
 ;
-.123
-#nome
-bbbbbbbb
-;
+120

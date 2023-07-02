@@ -843,25 +843,33 @@ int main() {
 		if (opcao == 6) break;
 
 		arquivo = escolherarquivo();
-		if (arquivo == 4) continue;
-		if (opcao == 1) {
+		if (arquivo == 4) continue; // sair
+		if (opcao == 1) { // imprimir arquivo
 			printarquivo(arquivos[arquivo]);
-		} else if (opcao == 2) {
+		} else if (opcao == 2) { // imprimir registro
+			if (regsize(arquivos[arquivo]) == 0) {
+				printf("Arquivo vazio.\n");
+				continue;
+			}
 			int id;
 			printarquivo(arquivos[arquivo]);
 			printf("Escolha um registro para ler mais detalhes: ");
 			do { input(&id, 'd', stdin);
 			} while (!hasreg(id, arquivos[arquivo]));
 			printregistro(id, arquivo);
-		} else if (opcao == 3) {
+		} else if (opcao == 3) { // adicionar registro
 			adicionarregistro(arquivo);
-		} else if (opcao == 4) {
+		} else if (opcao == 4) { // alterar registro
 			if (regsize(arquivos[arquivo]) == 0) {
-				printf("Este arquivo esta vazio, tente adicionar um registro antes\n");
+				printf("Arquivo vazio\n");
 				continue;
 			}
 			alterarregistro(arquivo, -1);
-		} else if (opcao == 5) {
+		} else if (opcao == 5) { // deletar registro
+			if (regsize(arquivos[arquivo]) == 0) {
+				printf("Arquivo vazio.\n");
+				continue;
+			}
 			int id;
 			printarquivo(arquivos[arquivo]);
 			while (1) {

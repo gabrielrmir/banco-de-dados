@@ -65,9 +65,11 @@ typedef struct {
 } Professor;
 
 char *arquivos[5] = {"cursos.txt", "disciplinas.txt", "alunos.txt", "professores.txt", "turmas.txt"};
+char *turnos[3] = {"matutino", "vespertino", "noturno"};
 char *semana[7] = {"Segunda", "Terca", "Quarta", "Quinta", "Sexta", "Sabado", "Domingo"};
 
 int adicionarregistro(int);
+void printfilterid(Node *, char *, int);
 
 void input(void *target, char t, FILE *src) {
 	int c;
@@ -307,6 +309,26 @@ void printarquivo(char *arquivo) {
 	fclose(ptr);
 }
 
+void printregistro(int id, int arquivo) {
+	void *reg = getreg(id, arquivo);
+	if (arquivo == 0) { // Curso
+		Curso *curso = (Curso *) reg;
+		printf("\n=-----------------------=\n");
+		printf("Id: %d\nNome: %s\nTurno: %c\nDisciplinas:\n", curso->id, curso->nome, curso->turno);
+		printfilterid(curso->disciplinas, arquivos[1], 0);
+		printf("=-----------------------=\n");
+	} else if (arquivo == 1) { // Disciplina
+		Disciplina *disciplina = (Disciplina *) reg;
+
+	} else if (arquivo == 2) { // Aluno
+		Aluno *aluno = (Aluno *) reg;
+		
+	} else if (arquivo == 3) { // Professor
+		Professor *professor = (Professor *) reg;
+
+	}
+}
+
 // adicionar registro a um arquivo
 void addreg(void *data, int tipo) {
 	FILE *ptr = fopen(arquivos[tipo], "a");
@@ -372,7 +394,7 @@ void addreg(void *data, int tipo) {
 int menu() {
 	int opcao;
 
-	printf("1. Imprimir arquivo\n");
+	printf("\n1. Imprimir arquivo\n");
 	printf("2. Imprimir registro\n");
 	printf("3. Adicionar registro\n");
 	printf("4. Alterar registro\n");
@@ -390,7 +412,7 @@ int menu() {
 int escolherarquivo() {
 	int opcao;
 
-	printf("1. Cursos\n");
+	printf("\n1. Cursos\n");
 	printf("2. Disciplinas\n");
 	printf("3. Alunos\n");
 	printf("4. Professores\n");
@@ -813,8 +835,7 @@ int main() {
 			printf("Escolha um registro para ler mais detalhes: ");
 			do { input(&id, 'd', stdin);
 			} while (!hasreg(id, arquivos[arquivo]));
-			// TODO: implementar printregistro
-			printf("funcao ainda nao implementada\n");
+			printregistro(id, arquivo);
 		} else if (opcao == 3) {
 			adicionarregistro(arquivo);
 		} else if (opcao == 4) {

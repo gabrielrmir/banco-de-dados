@@ -65,11 +65,12 @@ typedef struct {
 } Professor;
 
 char *arquivos[5] = {"cursos.txt", "disciplinas.txt", "alunos.txt", "professores.txt", "turmas.txt"};
-char *turnos[3] = {"matutino", "vespertino", "noturno"};
+char *turnos[3] = {"Matutino", "Vespertino", "Noturno"};
 char *semana[7] = {"Segunda", "Terca", "Quarta", "Quinta", "Sexta", "Sabado", "Domingo"};
 
 int adicionarregistro(int);
 void printfilterid(Node *, char *, int);
+int filterid(Node *, char *, int);
 
 void input(void *target, char t, FILE *src) {
 	int c;
@@ -257,7 +258,8 @@ void *getreg(int id, int tipo) {
 		input(&(aluno->cpf), 's', ptr); // cpf
 		input(&(aluno->telefone), 's', ptr); // telefone
 		input(&(aluno->email), 's', ptr); // email
-		sscanf(buffer, "%d%d", &(aluno->ing_ano), &(aluno->ing_semestre)); // ano, semestre
+		fgets(buffer, 256, ptr);
+		sscanf(buffer, "%d %d", &(aluno->ing_ano), &(aluno->ing_semestre)); // ano, semestre
 		reg = aluno;
 	} else if (tipo == 3) { // professores.txt
 		Professor *professor = (Professor *)malloc(sizeof(Professor));
@@ -311,22 +313,37 @@ void printarquivo(char *arquivo) {
 
 void printregistro(int id, int arquivo) {
 	void *reg = getreg(id, arquivo);
+	printf("\n=-----------------------=\n");
 	if (arquivo == 0) { // Curso
 		Curso *curso = (Curso *) reg;
-		printf("\n=-----------------------=\n");
-		printf("Id: %d\nNome: %s\nTurno: %c\nDisciplinas:\n", curso->id, curso->nome, curso->turno);
+		int turno;
+		switch (curso->turno) {
+		case 'v': // vespertino
+			turno = 1; break;
+		case 'n': // noturno
+			turno = 2; break;
+		default: // matutino
+			turno = 0; break;
+		}
+		printf("Id: %d\nNome: %s\nTurno: %s\nDisciplinas:\n", curso->id, curso->nome, turnos[turno]);
 		printfilterid(curso->disciplinas, arquivos[1], 0);
-		printf("=-----------------------=\n");
 	} else if (arquivo == 1) { // Disciplina
 		Disciplina *disciplina = (Disciplina *) reg;
-
+		printf("Id: %d\nNome: %s\nCarga: %d horas\n", disciplina->id, disciplina->nome, disciplina->carga);
+		int size_turmas = filterid(disciplina->turmas, arquivos[4], 0);
+		printf("Turmas: %d ", size_turmas);
+		if (size_turmas <= 1) printf("turma\n"); else printf("turmas\n");
 	} else if (arquivo == 2) { // Aluno
 		Aluno *aluno = (Aluno *) reg;
-		
+		printf("Matricula: %d\nNome: %s\nCpf: %s\nTelefone: %s\nEmail: %s\n", 
+			aluno->id, aluno->nome, aluno->cpf, aluno->telefone, aluno->email);
+		printf("Ingresso: %d, %dº semestre\n", aluno->ing_ano, aluno->ing_semestre);
 	} else if (arquivo == 3) { // Professor
 		Professor *professor = (Professor *) reg;
-
+		printf("Matricula: %d\nNome: %s\nCpf: %s\nTelefone: %s\nEmail: %s\n", 
+			professor->id, professor->nome, professor->cpf, professor->telefone, professor->email);
 	}
+	printf("=-----------------------=\n");
 }
 
 // adicionar registro a um arquivo

@@ -98,6 +98,8 @@ void input(void *target, char t, FILE *src) {
 				memcpy(target, &n, sizeof(int));
 			} else if (t == 's') {
 				char **str = (char **) target;
+				// printf("%s\n", buffer);
+				// sscanf(buffer, "%s", &target);
 				*str = (char *) malloc(strlen(buffer)+1);
 				strcpy(*str, buffer);
 			}
@@ -211,6 +213,23 @@ int regsize(char *arquivo) {
 	}
 	fclose(ptr);
 	return tam;
+}
+
+// retorna o nome do registro
+char *getnome(int id, char *arquivo) {
+	FILE *ptr;
+	char buffer[256], *nome;
+	fopen(arquivo, "r");
+	while (fgets(buffer, 256, ptr)) {
+		if (buffer[0] != '.') continue;
+		if (atoi(&buffer[1]) != id) continue;
+		fgets(buffer, 256, ptr);
+		nome = (char *) malloc(strlen(buffer)+1);
+		sscanf(buffer, "%s", nome);
+		break;
+	}
+	fclose(ptr);
+	return nome;
 }
 
 void *getreg(int id, int tipo) {
@@ -342,6 +361,23 @@ void printregistro(int id, int arquivo) {
 		Professor *professor = (Professor *) reg;
 		printf("Matricula: %d\nNome: %s\nCpf: %s\nTelefone: %s\nEmail: %s\n", 
 			professor->id, professor->nome, professor->cpf, professor->telefone, professor->email);
+	} else if (arquivo == 4) { // Turma
+		Turma *turma = (Turma *) reg;
+		printf("Id: %d\nTurma %c\nProfessor: %s\n\nNotas: %d\n", turma->id, turma->letra, getnome(turma->professor, arquivos[3]), nodesize(turma->notas));
+		Node *head = turma->notas;
+		if (head) printf("Id-|-Nome-|-Nota 1-|-Nota 2-|-Nota 3\n");
+		while (head) {
+			Nota *nota = (Nota *) head->data;
+			printf("%-3d %s %.2f %.2f %.2f\n", nota->id, getnome(nota->id, arquivos[2]), nota->nota1, nota->nota2, nota->nota3);
+			head = head->next;
+		}
+		head = turma->horarios;
+		printf("\nHorarios: %d\n", nodesize(turma->horarios));
+		while (head) {
+			Horario *h = (Horario *) head->data;
+			printf("%s: %d:%d - %d:%d\n", semana[h->semana], h->hi, h->mi, h->hf, h->mf);
+			head = head->next;
+		}
 	}
 	printf("=-----------------------=\n");
 }
@@ -426,21 +462,25 @@ int menu() {
 	return opcao;
 }
 
-int escolherarquivo() {
-	int opcao;
+int escolherarquivo(int tam) {
+	int opcao, i;
 
-	printf("\n1. Cursos\n");
-	printf("2. Disciplinas\n");
-	printf("3. Alunos\n");
-	printf("4. Professores\n");
-	printf("5. Voltar\n");
+	const char *arquivos[] = {"Cursos", "Disciplinas", "Alunos", "Professores", "Turmas"};
+
+	printf("\n");
+	for (i = 0; i < tam; i++) {
+		printf("%d. %s\n", i+1, arquivos[i]);
+	}
+	printf("%d. Voltar\n", i+1);
 	printf("Escolha um arquivo: ");
 
 	do {
 		input(&opcao, 'd', stdin);
-	} while (opcao < 1 || opcao > 5);
-	
-	return opcao-1;
+	} while (opcao < 1 || opcao > i+1);
+	opcao--;
+	if (opcao == i) opcao = -1;
+
+	return opcao;
 }
 
 // Converte uma string para um id valido,
@@ -842,20 +882,36 @@ int main() {
 		opcao = menu();
 		if (opcao == 6) break;
 
-		arquivo = escolherarquivo();
-		if (arquivo == 4) continue; // sair
+		arquivo = escolherarquivo(opcao==2?5:4);
+		if (arquivo == -1) continue; // sair
+
 		if (opcao == 1) { // imprimir arquivo
 			printarquivo(arquivos[arquivo]);
 		} else if (opcao == 2) { // imprimir registro
-			if (regsize(arquivos[arquivo]) == 0) {
-				printf("Arquivo vazio.\n");
-				continue;
-			}
 			int id;
-			printarquivo(arquivos[arquivo]);
-			printf("Escolha um registro para ler mais detalhes: ");
-			do { input(&id, 'd', stdin);
-			} while (!hasreg(id, arquivos[arquivo]));
+			if (arquivo != 4) {
+				if (regsize(arquivos[arquivo]) == 0) {
+					printf("Arquivo vazio.\n");
+					continue;
+				}
+				printarquivo(arquivos[arquivo]);
+				printf("Escolha um registro para ler mais detalhes: ");
+				do { input(&id, 'd', stdin);
+				} while (!hasreg(id, arquivos[arquivo]));
+			} else { // caso específico para escolher a turma
+				int discid;
+				if (regsize(arquivos[1]) == 0) {printf("Arquivo vazio\n"); continue;} // para imprimir uma turma é preciso que haja pelo menos uma disciplina
+				printarquivo(arquivos[1]);
+				printf("Escolha uma disciplina: ");
+				do { input(&discid, 'd', stdin);
+				} while (!hasreg(discid, arquivos[1]));
+				Disciplina *d = (Disciplina *) getreg(discid, 1);
+				if (filterid(d->turmas, arquivos[4], 0) == 0) {printf("Arquivo vazio\n"); continue;}
+				printfilterid(d->turmas, arquivos[4], 0);
+				printf("Escolha uma turma: ");
+				do { input(&id, 'd', stdin);
+				} while (!nodehasdata(d->turmas, &id, sizeof(int)));
+			}
 			printregistro(id, arquivo);
 		} else if (opcao == 3) { // adicionar registro
 			adicionarregistro(arquivo);

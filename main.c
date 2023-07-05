@@ -217,9 +217,8 @@ int regsize(char *arquivo) {
 
 // retorna o nome do registro
 char *getnome(int id, char *arquivo) {
-	FILE *ptr;
+	FILE *ptr = fopen(arquivo, "r");
 	char buffer[256], *nome;
-	fopen(arquivo, "r");
 	while (fgets(buffer, 256, ptr)) {
 		if (buffer[0] != '.') continue;
 		if (atoi(&buffer[1]) != id) continue;
